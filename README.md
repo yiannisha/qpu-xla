@@ -1,3 +1,13 @@
+# qpu-xla: a QPU-based aXelerated Linear Algebra library
+This is an XLA meant to be used on Raspberry Pi's utilizing the QPU of the VideoCore chip.
+
+The scope of this library is both an XLA (basic math operators) AND an ML inference (basic ML operators + inference engine) library.
+
+### ROADMAP
+- [] Test basic kernels against numpy and torch
+
+------
+
 # py-videocore7
 
 A Python library for GPGPU programming on Raspberry Pi 5, which realizes
