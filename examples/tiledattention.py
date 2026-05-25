@@ -478,7 +478,7 @@ class _BaseTiledAttentionExecutor:
     def close(self) -> None:
         self._drv.close()
 
-    def __enter__(self) -> "_BaseTiledAttentionExecutor":
+    def __enter__(self) -> _BaseTiledAttentionExecutor:
         return self
 
     def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
@@ -914,7 +914,9 @@ def benchmark_tiledattention_fp32() -> dict[str, float]:
 
         try:
             expected_sdpa = numpy_sdpa_fp32(q, k, v)
-            torch_sdpa_output, torch_sdpa_sec = _benchmark_callable(lambda: torch_attention_sdpa_fp32(q, k, v), repeat=5)
+            torch_sdpa_output, torch_sdpa_sec = _benchmark_callable(
+                lambda: torch_attention_sdpa_fp32(q, k, v), repeat=5
+            )
             assert np.allclose(torch_sdpa_output, expected_sdpa, atol=1e-4, rtol=1e-4)
         except RuntimeError:
             torch_sdpa_sec = None
@@ -960,7 +962,8 @@ def benchmark_tiledattention_fp32() -> dict[str, float]:
                 f"{attention_gops(query_len, key_len, depth, value_dim, torch_sdpa_sec):.4f} Gop/s"
             )
         total_extra_lines.append(
-            "torch native sdpa note: includes softmax with scale=1.0; speed baseline only, not a correctness reference."
+            "torch native sdpa note: includes softmax with scale=1.0; "
+            "speed baseline only, not a correctness reference."
         )
         _print_attention_stats(
             "Attention total",
@@ -1075,7 +1078,9 @@ def benchmark_tiledattention_int32() -> dict[str, float]:
     expected_value_output = reference_attention_value_int32(expected_scores, v)
     expected = reference_attention_int32(q, k, v)
     numpy_scores_output, numpy_score_sec = _benchmark_callable(lambda: numpy_attention_scores_int32(q, k), repeat=3)
-    numpy_value_output, numpy_value_sec = _benchmark_callable(lambda: numpy_attention_value_int32(expected_scores, v), repeat=3)
+    numpy_value_output, numpy_value_sec = _benchmark_callable(
+        lambda: numpy_attention_value_int32(expected_scores, v), repeat=3
+    )
     numpy_output, numpy_total_sec = _benchmark_callable(lambda: numpy_attention_int32(q, k, v), repeat=3)
     np.testing.assert_array_equal(numpy_scores_output, expected_scores)
     np.testing.assert_array_equal(numpy_value_output, expected_value_output)
@@ -1102,7 +1107,10 @@ def benchmark_tiledattention_int32() -> dict[str, float]:
     print("==== tiledattention int32 example ====")
     print("Operator: single-head dot-product attention core O = (Q @ K^T) @ V")
     print(f"Dimensions: q={query_len}x{depth}, k={key_len}x{depth}, v={key_len}x{value_dim}")
-    print("Kernel contract: q, k, and v must fit the signed 24-bit range, and the intermediate score matrix must also stay within it.")
+    print(
+        "Kernel contract: q, k, and v must fit the signed 24-bit range, "
+        "and the intermediate score matrix must also stay within it."
+    )
     print("Benchmark mode: steady-state QPU timings use precompiled kernels and persistent device buffers.")
     if torch_error is not None:
         print(f"Torch int32 path unavailable: {torch_error}")

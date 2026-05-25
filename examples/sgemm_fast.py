@@ -644,7 +644,7 @@ def summarize_error(name: str, actual: np.ndarray, expected: np.ndarray) -> None
     print(f"{name} minimum absolute error: {np.nanmin(np.abs(diff))}")
     print(f"{name} maximum absolute error: {np.nanmax(np.abs(diff))}")
 
-    with np.errstate(divide='ignore', invalid='ignore', over='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
         rel = np.abs(diff / expected)
     print(f"{name} minimum relative error: {np.nanmin(rel)}")
     print(f"{name} maximum relative error: {np.nanmax(rel)}")

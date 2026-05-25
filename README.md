@@ -1,97 +1,131 @@
-# qpu-xla: a QPU-based aXelerated Linear Algebra library
-This is an XLA meant to be used on Raspberry Pi's utilizing the QPU of the VideoCore chip.
+# qpu-xla: QPU-first ML kernels for Raspberry Pi 5
 
-The scope of this library is both an XLA (basic math operators) AND an ML inference (basic ML operators + inference engine) library.
+`qpu-xla` is a research runtime stack for executing small ML operators on the
+Raspberry Pi 5 VideoCore VII QPU. It builds on
+[`py-videocore7`](https://github.com/Idein/py-videocore7) for assembly,
+loading, and dispatch, then adds custom tiled kernels for integer GEMM,
+GEMM-backed convolution, pooling, min/max, an attention-style core, persistent
+executors, and an end-to-end LeNet-style pipeline.
 
-### ROADMAP
-- [] Test basic kernels against numpy and torch
+This repository accompanies the MLSys 2026 Young Professionals Symposium paper
+"Toward a Small ML Runtime Stack for Raspberry Pi 5 QPUs".
 
-------
+## Hardware Requirements
 
-# py-videocore7
+- Raspberry Pi 5 with VideoCore VII QPU.
+- Linux with the DRM V3D device exposed at `/dev/dri/card0`.
+- User access to the `video` group, or root:
 
-A Python library for GPGPU programming on Raspberry Pi 5, which realizes
-assembling and running QPU programs.
+```console
+sudo usermod --append --groups video "$USER"
+```
 
-For Raspberry Pi Zero/1/2/3, use
-[Idein/py-videocore](https://github.com/Idein/py-videocore) instead.
-
-For Raspberry Pi 4, use
-[Idein/py-videocore6](https://github.com/Idein/py-videocore6) instead.
-
-## About VideoCore VII QPU
-
-Raspberry Pi 5 (BCM2712) has a GPU named VideoCore VII QPU in its SoC.
-The basic instruction set (add/mul ALU dual issue, three delay slots et al.)
-remains the same as VideoCore VI QPU of Raspberry Pi 4, and some units
-now perform differently.
-
-- VideoCore IV QPU @ 250MHz: 250 [MHz] x 3 [slice] x 4 [qpu/slice] x 4 [physical core/qpu] x 2 [op/cycle] = 24 [Gflop/s]
-- VideoCore IV QPU @ 300MHz: 300 [MHz] x 3 [slice] x 4 [qpu/slice] x 4 [physical core/qpu] x 2 [op/cycle] = 28.8 [Gflop/s]
-- VideoCore VI QPU @ 500MHz: 500 [MHz] x 2 [slice] x 4 [qpu/slice] x 4 [physical core/qpu] x 2 [op/cycle] = 32 [Gflop/s]
-- VideoCore VII QPU @ 800MHz: 800 [MHz] x 3 [slice] x 4 [qpu/slice] x 4 [physical core/qpu] x 2 [op/cycle] = 76.8 [Gflop/s]
-
-
-## Requirements
-
-`py-videocore7` communicates with the V3D hardware through `/dev/dri/card0`,
-which is exposed by the DRM V3D driver.
-To access the device, you need to belong to `video` group or be `root` user.
-If you choose the former, run `sudo usermod --append --groups video $USER`
-(re-login to take effect).
-
+Log out and back in after changing group membership.
 
 ## Installation
 
-[Install `uv`](https://docs.astral.sh/uv/getting-started/installation/) and
-clone `py-videocore7` and run with `uv`:
+Install `uv`, clone the repository, and let `uv` resolve the direct
+`py-videocore7` dependency from GitHub:
 
 ```console
-$ sudo apt update
-$ sudo apt upgrade
-$ sudo apt install git
-$ git clone https://github.com/Idein/py-videocore7.git
-$ cd py-videocore7/
-$ uv run examples/sgemm.py
+curl -LsSf https://astral.sh/uv/install.sh | sh
+git clone https://github.com/yiannisha/qpu-xla.git
+cd qpu-xla
+uv sync
 ```
 
-
-## Running tests and examples
-
-In the `py-videocore7` directory cloned above:
+PyTorch is optional and is only used for CPU baseline comparisons in selected
+scripts:
 
 ```console
-$ uv run pytest -vs tests
+uv sync --extra baselines
 ```
+
+## Tutorial
+
+Run scripts directly with `uv run`. All QPU scripts must be run on Raspberry Pi
+5 hardware with V3D access.
 
 ```console
-$ uv run examples/sgemm.py
-==== sgemm example (1024x1024 times 1024x1024) ====
-numpy: 0.0390 sec, 55.1937 Gflop/s
-QPU:   0.1006 sec, 21.3827 Gflop/s
-Minimum absolute error: 0.0
-Maximum absolute error: 0.0003814697265625
-Minimum relative error: 0.0
-Maximum relative error: 0.13134673237800598
+uv run examples/igemm.py
+uv run examples/igemm_int16.py
+uv run examples/sgemm_fast.py
 ```
+
+Operator-level kernels:
 
 ```console
-$ uv run examples/scopy.py
-==== CPU scopy example (24.0 Mi elements) ====
-0.06235705600010988 sec, 1614.3048190059296 MB/s
-==== QPU 1 thread scopy example (24.0 Mi elements) ====
-Preparing for buffers...
-Executing on QPU...
-0.05958151100003306 sec, 1689.5055917588957 MB/s
-==== QPU 12 threads scopy example (24.0 Mi elements) ====
-Preparing for buffers...
-Executing on QPU...
-0.02430019499934133 sec, 4142.489227050586 MB/s
+uv run examples/minmax.py
+uv run examples/pool2d.py
+uv run examples/tiledconv2d.py
+uv run examples/tiledattention.py
 ```
 
-## References
+End-to-end LeNet-style pipeline:
 
-- DRM V3D driver which controls QPU via hardware V3D registers: [linux/drivers/gpu/drm/v3d](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d)
-- Mesa library which partially includes the QPU instruction set: [mesa/src/broadcom/qpu](https://gitlab.freedesktop.org/mesa/mesa/-/tree/main/src/broadcom/qpu)
-- py-videocore: [Idein/py-videocore](https://github.com/Idein/py-videocore)
-- py-videocore6: [Idein/py-videocore6](https://github.com/Idein/py-videocore6)
+```console
+uv run examples/tiledlenet5.py
+```
+
+The scripts report NumPy, optional PyTorch, cached QPU, and execute-only QPU
+measurements where applicable. Cached QPU timing excludes one-time setup such
+as assembly, buffer allocation, and metadata construction; execute-only timing
+isolates kernel dispatch and device execution.
+
+## Paper Metrics
+
+Metrics below are transcribed from `MLSYS26_YPS.pdf`.
+
+### Integer GEMM Throughput
+
+| Size | INT32 NumPy GOPS | INT32 QPU GOPS | INT32 Speedup | INT16-in/INT32-acc NumPy GOPS | INT16-in/INT32-acc QPU GOPS | INT16-in/INT32-acc Speedup |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 256 | 1.18 | 6.30 | 5.34x | 1.17 | 6.30 | 5.40x |
+| 512 | 0.57 | 16.69 | 29.49x | 0.57 | 16.82 | 29.70x |
+| 768 | 0.57 | 20.49 | 36.25x | 0.60 | 20.49 | 33.91x |
+| 1024 | 0.21 | 10.73 | 50.15x | 0.23 | 21.67 | 94.38x |
+
+### Operator-Level Performance
+
+Min/max and pooling are reported in GiB/s. Convolution and attention are
+reported in GOPS.
+
+| Operator | Setting | NumPy | PyTorch | QPU-C cached | QPU-E execute-only |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Min/max | INT32, 12 cores | 6.27 | 6.17 | 6.50 | - |
+| Min/max | INT16, 12 cores | 6.71 | 6.26 | 6.02 | - |
+| AvgPool 2x2 / 2 | INT32, 12 cores | 0.72 | 0.69 | 2.62 | - |
+| MaxPool 2x2 / 2 | FP32, 12 cores | 2.66 | 3.03 | 2.65 | - |
+| Conv2D | FP32 | 21.69 | 12.74 | 16.25 | 19.87 |
+| Conv2D | INT32 | 1.44 | 8.30 | 15.08 | 18.60 |
+| Conv2D | INT16-in/INT32-acc | 1.45 | 15.45 | 15.97 | 18.43 |
+| Attention core total | FP32 | 82.35 | 5.97 | 12.74 | 14.31 |
+| Attention core total | INT32 | 1.13 | 1.79 | 12.81 | 14.41 |
+
+Preliminary end-to-end CNN result: the 12-core execute-only INT32 LeNet-style
+pipeline reaches `4.08 GOPS`, compared with `0.83 GOPS` for NumPy, nearly a
+`5x` improvement.
+
+## Paper Timeline
+
+| Milestone | Date |
+| --- | --- |
+| Submission | TBD |
+| Acceptance | TBD |
+| Camera-ready | TBD |
+| Presentation | MLSys 2026 Young Professionals Symposium, Bellevue, WA, 2026 |
+
+## Roadmap
+
+- Broader operator coverage for QPU-first inference.
+- CPU/QPU scheduling for mixed workloads.
+- A stable persistent runtime API above individual example scripts.
+- Lightweight end-to-end LLM inference experiments on Raspberry Pi 5.
+- Reproducible benchmark harnesses for cached and execute-only timing.
+
+## Attribution
+
+`qpu-xla` depends on upstream `py-videocore7` rather than vendoring its
+implementation. Upstream `py-videocore7` remains owned and licensed by its
+authors. The qpu-xla kernels and runtime experiments in this repository are
+separate research code associated with the MLSys 2026 YPS paper.

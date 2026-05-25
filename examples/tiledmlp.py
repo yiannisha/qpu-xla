@@ -1137,7 +1137,7 @@ class _BaseTiledMlpExecutor:
     def close(self) -> None:
         self._drv.close()
 
-    def __enter__(self) -> "_BaseTiledMlpExecutor":
+    def __enter__(self) -> _BaseTiledMlpExecutor:
         return self
 
     def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
@@ -1528,8 +1528,10 @@ def _print_qpu_stats(
     else:
         prep_cached_sec = qpu_stats.prep_sec + qpu_stats.cached_total_sec
         print(f"QPU host prep: {qpu_stats.prep_sec:.4f} sec")
-        print(f"QPU cached total: {qpu_stats.cached_total_sec:.4f} sec, {throughput_fn(qpu_stats.cached_total_sec):.4f} Gop/s")
-        print(f"QPU execute only: {qpu_stats.execute_only_sec:.4f} sec, {throughput_fn(qpu_stats.execute_only_sec):.4f} Gop/s")
+        cached_gops = throughput_fn(qpu_stats.cached_total_sec)
+        execute_gops = throughput_fn(qpu_stats.execute_only_sec)
+        print(f"QPU cached total: {qpu_stats.cached_total_sec:.4f} sec, {cached_gops:.4f} Gop/s")
+        print(f"QPU execute only: {qpu_stats.execute_only_sec:.4f} sec, {execute_gops:.4f} Gop/s")
         print(f"QPU prep+cached total: {prep_cached_sec:.4f} sec, {throughput_fn(prep_cached_sec):.4f} Gop/s")
         print(f"Maximum absolute error: {qpu_stats.max_abs_error}")
     print()
@@ -1593,7 +1595,9 @@ def benchmark_tiledmlp_fp32() -> dict[str, float]:
 
     print("==== tiledmlp fp32 example ====")
     print("Operator: Linear -> ReLU -> Linear")
-    print(f"Dimensions: x={batch}x{in_features}, w1={in_features}x{hidden_features}, w2={hidden_features}x{out_features}")
+    print(
+        f"Dimensions: x={batch}x{in_features}, w1={in_features}x{hidden_features}, w2={hidden_features}x{out_features}"
+    )
     print("Benchmark mode: steady-state QPU timings use precompiled kernels and persistent device buffers.")
 
     result: dict[str, float] = {"numpy_sec": numpy_total_sec}
@@ -1746,7 +1750,9 @@ def benchmark_tiledmlp_int32() -> dict[str, float]:
 
     numpy_layer1_actual, numpy_layer1_sec = _benchmark_callable(lambda: numpy_linear_int32(x, w1, b1), repeat=3)
     numpy_relu_actual, numpy_relu_sec = _benchmark_callable(lambda: numpy_relu_int32(expected_layer1), repeat=5)
-    numpy_layer2_actual, numpy_layer2_sec = _benchmark_callable(lambda: numpy_linear_int32(expected_relu, w2, b2), repeat=3)
+    numpy_layer2_actual, numpy_layer2_sec = _benchmark_callable(
+        lambda: numpy_linear_int32(expected_relu, w2, b2), repeat=3
+    )
     numpy_total_actual, numpy_total_sec = _benchmark_callable(lambda: numpy_mlp_int32(x, w1, b1, w2, b2), repeat=3)
     np.testing.assert_array_equal(numpy_layer1_actual, expected_layer1)
     np.testing.assert_array_equal(numpy_relu_actual, expected_relu)
@@ -1796,8 +1802,12 @@ def benchmark_tiledmlp_int32() -> dict[str, float]:
 
     print("==== tiledmlp int32 example ====")
     print("Operator: Linear -> ReLU -> Linear")
-    print(f"Dimensions: x={batch}x{in_features}, w1={in_features}x{hidden_features}, w2={hidden_features}x{out_features}")
-    print("Kernel contract: x, w1, and w2 must fit the signed 24-bit range, and layer1 output must also stay within it.")
+    print(
+        f"Dimensions: x={batch}x{in_features}, w1={in_features}x{hidden_features}, w2={hidden_features}x{out_features}"
+    )
+    print(
+        "Kernel contract: x, w1, and w2 must fit the signed 24-bit range, and layer1 output must also stay within it."
+    )
     print("Benchmark mode: steady-state QPU timings use precompiled kernels and persistent device buffers.")
     if torch_error is not None:
         print(f"Torch int32 path unavailable: {torch_error}")

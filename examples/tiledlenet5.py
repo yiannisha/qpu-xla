@@ -139,15 +139,7 @@ def trunc_divide_pow2_numpy(x: npt.NDArray[np.int64], shift: int) -> npt.NDArray
 
 def lenet5_ops(batch: int) -> int:
     conv1_macs = batch * CONV1_OUT_CHANNELS * CONV1_OUT_HEIGHT * CONV1_OUT_WIDTH * INPUT_CHANNELS * KERNEL * KERNEL
-    conv2_macs = (
-        batch
-        * CONV2_OUT_CHANNELS
-        * CONV2_OUT_HEIGHT
-        * CONV2_OUT_WIDTH
-        * CONV1_OUT_CHANNELS
-        * KERNEL
-        * KERNEL
-    )
+    conv2_macs = batch * CONV2_OUT_CHANNELS * CONV2_OUT_HEIGHT * CONV2_OUT_WIDTH * CONV1_OUT_CHANNELS * KERNEL * KERNEL
     pool1_ops = batch * CONV1_OUT_CHANNELS * POOL1_OUT_HEIGHT * POOL1_OUT_WIDTH * 4
     pool2_ops = batch * CONV2_OUT_CHANNELS * POOL2_OUT_HEIGHT * POOL2_OUT_WIDTH * 4
     fc1_ops = 2 * batch * FC1_IN_FEATURES * FC1_OUT_FEATURES + 2 * batch * FC1_OUT_FEATURES
@@ -475,14 +467,17 @@ def _int32_stage_inputs_within_contract(
     weights: LeNet5Weights,
     reference: LeNet5Reference,
 ) -> bool:
-    if max(
-        _max_abs_int(x),
-        _max_abs_int(weights.conv1_w.astype(np.int32)),
-        _max_abs_int(weights.conv2_w.astype(np.int32)),
-        _max_abs_int(weights.fc1_w.astype(np.int32)),
-        _max_abs_int(weights.fc2_w.astype(np.int32)),
-        _max_abs_int(weights.fc3_w.astype(np.int32)),
-    ) >= SIGNED_24BIT_LIMIT:
+    if (
+        max(
+            _max_abs_int(x),
+            _max_abs_int(weights.conv1_w.astype(np.int32)),
+            _max_abs_int(weights.conv2_w.astype(np.int32)),
+            _max_abs_int(weights.fc1_w.astype(np.int32)),
+            _max_abs_int(weights.fc2_w.astype(np.int32)),
+            _max_abs_int(weights.fc3_w.astype(np.int32)),
+        )
+        >= SIGNED_24BIT_LIMIT
+    ):
         return False
 
     stage_inputs = [reference.pool1, reference.pool2, reference.fc1, reference.fc2]
@@ -1076,8 +1071,7 @@ class LeNet5QpuExecutor:
         batch_tile = lcm(16, num_qpus)
         if batch % batch_tile != 0:
             raise ValueError(
-                f"batch must be a multiple of {batch_tile} for the current "
-                "multi-QPU lowering/pool schedule"
+                f"batch must be a multiple of {batch_tile} for the current multi-QPU lowering/pool schedule"
             )
 
         dtype = config.np_dtype
@@ -1126,33 +1120,39 @@ class LeNet5QpuExecutor:
 
         itemsize = dtype.itemsize
         data_area_size = (
-            batch * INPUT_CHANNELS * INPUT_HEIGHT * INPUT_WIDTH
-            + 1
-            + self.conv1_p * self.conv1_q_padded
-            + self.conv1_q_padded * self.conv1_r_padded
-            + self.conv1_p * self.conv1_r_padded
-            + self.conv1_r_padded
-            + self.pool1_p * self.pool1_channels_padded
-            + self.conv2_p * self.conv2_q_padded
-            + self.conv2_q_padded * self.conv2_r_padded
-            + self.conv2_p * self.conv2_r_padded
-            + self.conv2_r_padded
-            + self.pool2_p * self.pool2_channels_padded
-            + FC1_IN_FEATURES * self.fc1_r_padded
-            + self.batch * self.fc1_r_padded
-            + self.fc1_r_padded
-            + self.fc2_q_padded * self.fc2_r_padded
-            + self.batch * self.fc2_r_padded
-            + self.fc2_r_padded
-            + self.fc3_q_padded * self.fc3_r_padded
-            + self.batch * self.fc3_r_padded
-            + self.fc3_r_padded
-        ) * itemsize + (
-            self.conv1_p * self.conv1_q_padded
-            + self.pool1_p * self.pool1_channels_padded
-            + self.conv2_p * self.conv2_q_padded
-            + self.pool2_p * self.pool2_channels_padded
-        ) * 4 + (1 << 20)
+            (
+                batch * INPUT_CHANNELS * INPUT_HEIGHT * INPUT_WIDTH
+                + 1
+                + self.conv1_p * self.conv1_q_padded
+                + self.conv1_q_padded * self.conv1_r_padded
+                + self.conv1_p * self.conv1_r_padded
+                + self.conv1_r_padded
+                + self.pool1_p * self.pool1_channels_padded
+                + self.conv2_p * self.conv2_q_padded
+                + self.conv2_q_padded * self.conv2_r_padded
+                + self.conv2_p * self.conv2_r_padded
+                + self.conv2_r_padded
+                + self.pool2_p * self.pool2_channels_padded
+                + FC1_IN_FEATURES * self.fc1_r_padded
+                + self.batch * self.fc1_r_padded
+                + self.fc1_r_padded
+                + self.fc2_q_padded * self.fc2_r_padded
+                + self.batch * self.fc2_r_padded
+                + self.fc2_r_padded
+                + self.fc3_q_padded * self.fc3_r_padded
+                + self.batch * self.fc3_r_padded
+                + self.fc3_r_padded
+            )
+            * itemsize
+            + (
+                self.conv1_p * self.conv1_q_padded
+                + self.pool1_p * self.pool1_channels_padded
+                + self.conv2_p * self.conv2_q_padded
+                + self.pool2_p * self.pool2_channels_padded
+            )
+            * 4
+            + (1 << 20)
+        )
 
         self._drv = Driver(data_area_size=data_area_size)
         self._gather_code = self._drv.program(qpu_gather_copy_words, num_qpus=self.num_qpus)
@@ -1588,8 +1588,7 @@ def benchmark_lenet5_fp32(
     print("QPU steady-state layout: on-device gather lowering -> position-major matrices -> zero-copy flatten -> FC.")
     print("Steady-state CPU compute in the QPU path: none.")
     print(
-        "Excluded one-time CPU setup: weight reshape/padding, metadata generation, "
-        "kernel assembly, buffer allocation."
+        "Excluded one-time CPU setup: weight reshape/padding, metadata generation, kernel assembly, buffer allocation."
     )
 
     result: dict[str, float] = {"numpy_sec": numpy_sec}
@@ -1656,8 +1655,7 @@ def benchmark_lenet5_int32(
     print("QPU steady-state layout: on-device gather lowering -> position-major matrices -> zero-copy flatten -> FC.")
     print("Steady-state CPU compute in the QPU path: none.")
     print(
-        "Excluded one-time CPU setup: weight reshape/padding, metadata generation, "
-        "kernel assembly, buffer allocation."
+        "Excluded one-time CPU setup: weight reshape/padding, metadata generation, kernel assembly, buffer allocation."
     )
     print(
         "Actual smul24 stage maxima: "

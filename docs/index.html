@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>qpu-xla | Raspberry Pi 5 QPU ML kernels</title>
+    <meta
+      name="description"
+      content="QPU-first ML kernels and runtime experiments for Raspberry Pi 5 VideoCore VII."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="#">qpu-xla</a>
+        <div class="nav-links">
+          <a href="#metrics">Metrics</a>
+          <a href="#tutorial">Tutorial</a>
+          <a href="#timeline">Timeline</a>
+          <a href="https://github.com/yiannisha/qpu-xla">GitHub</a>
+        </div>
+      </nav>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="kicker">MLSys 2026 Young Professionals Symposium</p>
+          <h1>QPU-first ML kernels for Raspberry Pi 5</h1>
+          <p>
+            A small ML runtime stack for VideoCore VII: tiled integer GEMM,
+            GEMM-backed convolution, pooling, attention-style kernels, and
+            persistent executors built on py-videocore7.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="assets/MLSYS26_YPS.pdf">Read paper</a>
+            <a class="button" href="#tutorial">Run kernels</a>
+          </div>
+        </div>
+        <figure class="paper-preview">
+          <img src="assets/paper-preview.png" alt="Preview of the qpu-xla MLSys 2026 YPS paper" />
+          <figcaption>Toward a Small ML Runtime Stack for Raspberry Pi 5 QPUs</figcaption>
+        </figure>
+      </div>
+    </header>
+
+    <main>
+      <section class="band intro" aria-labelledby="summary-title">
+        <div class="wrap">
+          <h2 id="summary-title">Runtime Stack</h2>
+          <p>
+            qpu-xla treats the Raspberry Pi 5 QPU as a practical edge ML
+            execution substrate. The codebase keeps upstream py-videocore7 as
+            a dependency and focuses this repository on reusable kernels,
+            operator experiments, and paper reproduction scripts.
+          </p>
+        </div>
+      </section>
+
+      <section class="band metrics" id="metrics" aria-labelledby="metrics-title">
+        <div class="wrap">
+          <h2 id="metrics-title">Reported Metrics</h2>
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span class="metric-value">21.67</span>
+              <span class="metric-label">GOPS packed INT16-in / INT32-acc GEMM</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value">94.38x</span>
+              <span class="metric-label">best GEMM speedup over NumPy</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value">18.60</span>
+              <span class="metric-label">GOPS INT32 Conv2D execute-only</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value">14.41</span>
+              <span class="metric-label">GOPS INT32 attention execute-only</span>
+            </article>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <caption>
+                Integer GEMM throughput, GOPS
+              </caption>
+              <thead>
+                <tr>
+                  <th>Size</th>
+                  <th>INT32 NumPy</th>
+                  <th>INT32 QPU</th>
+                  <th>INT32 speedup</th>
+                  <th>INT16-in QPU</th>
+                  <th>INT16-in speedup</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>256</td><td>1.18</td><td>6.30</td><td>5.34x</td><td>6.30</td><td>5.40x</td></tr>
+                <tr><td>512</td><td>0.57</td><td>16.69</td><td>29.49x</td><td>16.82</td><td>29.70x</td></tr>
+                <tr><td>768</td><td>0.57</td><td>20.49</td><td>36.25x</td><td>20.49</td><td>33.91x</td></tr>
+                <tr><td>1024</td><td>0.21</td><td>10.73</td><td>50.15x</td><td>21.67</td><td>94.38x</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="band tutorial" id="tutorial" aria-labelledby="tutorial-title">
+        <div class="wrap two-col">
+          <div>
+            <h2 id="tutorial-title">Run the Scripts</h2>
+            <p>
+              Use Raspberry Pi 5 hardware with `/dev/dri/card0` access. PyTorch
+              is optional and only needed for selected CPU baseline comparisons.
+            </p>
+          </div>
+          <pre><code>uv sync
+uv run examples/igemm.py
+uv run examples/igemm_int16.py
+uv run examples/minmax.py
+uv run examples/pool2d.py
+uv run examples/tiledconv2d.py
+uv run examples/tiledattention.py
+uv run examples/tiledlenet5.py</code></pre>
+        </div>
+      </section>
+
+      <section class="band timeline" id="timeline" aria-labelledby="timeline-title">
+        <div class="wrap">
+          <h2 id="timeline-title">Paper Timeline</h2>
+          <ol class="timeline-list">
+            <li><span>Submission</span><strong>TBD</strong></li>
+            <li><span>Acceptance</span><strong>TBD</strong></li>
+            <li><span>Camera-ready</span><strong>TBD</strong></li>
+            <li><span>Presentation</span><strong>MLSys 2026 YPS, Bellevue, WA</strong></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="band roadmap" aria-labelledby="roadmap-title">
+        <div class="wrap">
+          <h2 id="roadmap-title">Roadmap</h2>
+          <ul class="roadmap-list">
+            <li>Broader QPU operator coverage for edge inference.</li>
+            <li>CPU/QPU scheduling for mixed workloads.</li>
+            <li>A stable persistent runtime API above the current scripts.</li>
+            <li>Lightweight end-to-end LLM inference experiments.</li>
+            <li>Reproducible benchmark harnesses for cached and execute-only timing.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -385,10 +385,7 @@ class TiledMatmulExecutor:
             raise ValueError("matrix shapes do not align")
 
         data_area_size = (
-            p * q * a_dtype_np.itemsize
-            + q_b * r * b_dtype_np.itemsize
-            + p * r * out_dtype_np.itemsize
-            + 4096
+            p * q * a_dtype_np.itemsize + q_b * r * b_dtype_np.itemsize + p * r * out_dtype_np.itemsize + 4096
         )
         self._drv = Driver(data_area_size=data_area_size)
         self._code = self._drv.program(qpu_kernel)

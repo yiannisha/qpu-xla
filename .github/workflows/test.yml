@@ -1,15 +1,17 @@
-name: Run Tests
+name: Validate
 
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     paths:
       - '.github/workflows/test.yml'
       - 'src/**'
-      - 'tests/**'
       - 'examples/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'pyproject.toml'
   schedule:
     - cron: '0 6 * * 1-5'
 
@@ -19,27 +21,29 @@ jobs:
     timeout-minutes: 120
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup uv
       uses: astral-sh/setup-uv@v4
-      # Install a specific version of uv.
-      # with:
-      #     version: "x.y.z"
 
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version-file: "pyproject.toml"
+        python-version-file: ".python-version"
+
+    - name: Install project
+      run: uv sync --extra dev
 
     - name: Run format checker
-      run: uvx ruff format --check --diff .
+      run: uv run ruff format --check --diff .
 
     - name: Run linter
-      run: uvx ruff check --show-fixes .
+      run: uv run ruff check --show-fixes .
 
     - name: Run type checker
-      run: uvx mypy .
+      run: uv run mypy src/qpu_xla
 
-    # - name: Run tests requires pi5 runner
-    #   run: uv run pytest -v tests
+    - name: Compile examples
+      run: uv run python -m compileall examples
+
+    # QPU execution tests require a Raspberry Pi 5 runner with /dev/dri/card0.
